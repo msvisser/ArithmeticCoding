@@ -1,0 +1,8 @@
+[package]
+name = "arithmetic_coding"
+version = "0.1.0"
+authors = ["Michiel Visser <info@webmichiel.nl>"]
+edition = "2018"
+
+[dependencies]
+clap = "~2.32"
