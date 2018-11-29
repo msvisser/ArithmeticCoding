@@ -7,10 +7,9 @@ pub struct ACEncoder<I> {
     finished: bool,
     emit_buf: Vec<bool>,
 
-    range: Range,
-    s: usize,
-
     probability: Probability,
+    range: Range,
+    middle_count: usize,
 }
 
 impl<I> ACEncoder<I> where I: Iterator<Item = u8> {
@@ -23,19 +22,18 @@ impl<I> ACEncoder<I> where I: Iterator<Item = u8> {
             finished: false,
             emit_buf: Vec::new(),
 
+            probability: Probability::new(probs),
             range: Range::new(),
-            s: 0,
-
-            probability: Probability::new(probs)
+            middle_count: 0,
         }
     }
 
     fn emit(&mut self, bit: bool) {
         self.emit_buf.push(bit);
-        for _ in 0..self.s {
+        for _ in 0..self.middle_count {
             self.emit_buf.push(!bit);
         }
-        self.s = 0;
+        self.middle_count = 0;
     }
 
     fn generate_for_symbol(&mut self, symbol: usize) {
@@ -52,7 +50,7 @@ impl<I> ACEncoder<I> where I: Iterator<Item = u8> {
         }
 
         while self.range.in_middle_half() {
-            self.s += 1;
+            self.middle_count += 1;
             self.range.scale_middle_half();
         }
 
@@ -60,7 +58,7 @@ impl<I> ACEncoder<I> where I: Iterator<Item = u8> {
     }
 
     fn finalize(&mut self) {
-        self.s += 1;
+        self.middle_count += 1;
         if self.range.in_bottom_quarter() {
             self.emit(false);
         } else {

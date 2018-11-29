@@ -3,13 +3,11 @@ use super::{HALF, QUARTER, SYMBOLS, PRECISION, EOF};
 
 pub struct ACDecoder<I> {
     iter: I,
-
     finished: bool,
 
+    probability: Probability,
     range: Range,
     fraction: u64,
-
-    probability: Probability,
 }
 
 impl<I> ACDecoder<I> where I: Iterator<Item = bool> {
@@ -18,13 +16,11 @@ impl<I> ACDecoder<I> where I: Iterator<Item = bool> {
 
         let mut decoder = Self {
             iter: iter,
-
             finished: false,
 
+            probability: Probability::new(probs),
             range: Range::new(),
             fraction: 0,
-
-            probability: Probability::new(probs)
         };
         decoder.initial_fraction();
         decoder
