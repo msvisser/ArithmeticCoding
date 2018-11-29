@@ -15,11 +15,15 @@ impl<I> Iterator for BitPacker<I> where I: Iterator<Item = bool> {
         let mut result = 0;
 
         for offset in 0..8 {
+            // Try to get a bit from the input stream
             if let Some(bit) = self.iter.next() {
                 if bit {
+                    // Add the bit at the correct offset
                     result |= 1 << offset;
                 }
             } else {
+                // If there are no more bits, and this was the start of a byte
+                // return None, otherwise return the partial result
                 if offset == 0 {
                     return None
                 } else {
