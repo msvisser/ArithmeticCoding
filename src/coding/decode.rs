@@ -1,26 +1,23 @@
 use super::{Probability, Range};
-use super::{HALF, QUARTER, SYMBOLS, PRECISION, EOF};
+use super::{HALF, QUARTER, PRECISION};
 
 pub struct ACDecoder<I> {
     iter: I,
     finished: bool,
 
-    probability: Probability,
+    probability: Box<Probability>,
     range: Range,
     fraction: u64,
 }
 
 impl<I> ACDecoder<I> where I: Iterator<Item = bool> {
     // Create a new arithmetic decoder
-    pub fn new(iter: I) -> Self {
-        // Start off with equal probabilities for each symbol
-        let probs = vec![1; SYMBOLS];
-
+    pub fn new(iter: I, probability: Box<Probability>) -> Self {
         let mut decoder = Self {
             iter: iter,
             finished: false,
 
-            probability: Probability::new(probs),
+            probability: probability,
             range: Range::new(),
             fraction: 0,
         };
@@ -44,27 +41,18 @@ impl<I> ACDecoder<I> where I: Iterator<Item = bool> {
             self.fraction += 1;
         }
     }
-}
 
-impl<I> Iterator for ACDecoder<I> where I: Iterator<Item = bool> {
-    type Item = u8;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        // When finished always return None
-        if self.finished {
-            return None;
-        }
-
-        let mut result: Option<u8> = None;
+    fn decode_symbol(&mut self, symbols: usize) -> Option<usize> {
+        let mut result: Option<usize> = None;
         // Try to find a symbol which matches the fraction
-        for symbol in 0..SYMBOLS {
+        for symbol in 0..symbols {
             // Generate the range for the possible symbol
-            let new_range = self.range.select_symbol(symbol, &self.probability);
+            let new_range = self.range.select_symbol(symbol, &*self.probability);
 
             // Check that this new range contains the fraction
             if new_range.contains(self.fraction) {
                 // If the encoded symbol is an EOF finish decoding
-                if symbol == EOF {
+                if symbol == symbols - 1 {
                     self.finished = true;
                     return None;
                 }
@@ -74,8 +62,9 @@ impl<I> Iterator for ACDecoder<I> where I: Iterator<Item = bool> {
                 // Increment the probability for this symbol, to stay in sync
                 // with the encoder
                 self.probability.increment(symbol);
+                self.probability.update_last(symbol);
 
-                result = Some(symbol as u8);
+                result = Some(symbol);
                 break;
             }
         }
@@ -100,7 +89,23 @@ impl<I> Iterator for ACDecoder<I> where I: Iterator<Item = bool> {
             self.increment_fraction();
         }
 
-        // Return the decoded symbol
         result
+    }
+}
+
+impl<I> Iterator for ACDecoder<I> where I: Iterator<Item = bool> {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // When finished always return None
+        if self.finished {
+            return None;
+        }
+
+        // Return the decoded symbol
+        match self.decode_symbol(257) {
+            Some(symbol) => Some(symbol as u8),
+            None => None,
+        }
     }
 }

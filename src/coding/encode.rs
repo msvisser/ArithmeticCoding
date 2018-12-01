@@ -1,5 +1,4 @@
 use super::{Probability, Range};
-use super::{SYMBOLS, EOF};
 
 pub struct ACEncoder<I> {
     iter: I,
@@ -7,24 +6,21 @@ pub struct ACEncoder<I> {
     finished: bool,
     emit_buf: Vec<bool>,
 
-    probability: Probability,
+    probability: Box<Probability>,
     range: Range,
     middle_count: usize,
 }
 
 impl<I> ACEncoder<I> where I: Iterator<Item = u8> {
     // Create a new arithmetic encoder
-    pub fn new(iter: I) -> Self {
-        // Start off with equal probabilities for each symbol
-        let probs = vec![1; SYMBOLS];
-
+    pub fn new(iter: I, probability: Box<Probability>) -> Self {
         Self {
             iter: iter,
 
             finished: false,
             emit_buf: Vec::new(),
 
-            probability: Probability::new(probs),
+            probability: probability,
             range: Range::new(),
             middle_count: 0,
         }
@@ -42,7 +38,7 @@ impl<I> ACEncoder<I> where I: Iterator<Item = u8> {
 
     fn generate_for_symbol(&mut self, symbol: usize) {
         // Change the range to the sub-range for this symbol
-        self.range = self.range.select_symbol(symbol, &self.probability);
+        self.range = self.range.select_symbol(symbol, &*self.probability);
 
         // When in the bottom or top half we encode a zero or one
         while self.range.in_bottom_half() || self.range.in_upper_half() {
@@ -67,6 +63,7 @@ impl<I> ACEncoder<I> where I: Iterator<Item = u8> {
 
         // Increment the probability for this symbol
         self.probability.increment(symbol);
+        self.probability.update_last(symbol);
     }
 
     fn finalize(&mut self) {
@@ -98,7 +95,7 @@ impl<I> Iterator for ACEncoder<I> where I: Iterator<Item = u8> {
                 self.generate_for_symbol(symbol as usize);
             } else {
                 // Otherwise generate an EOF and finalize the bits
-                self.generate_for_symbol(EOF);
+                self.generate_for_symbol(256);
                 self.finalize();
             }
         }

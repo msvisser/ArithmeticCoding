@@ -1,9 +1,11 @@
-pub struct Probability {
+use super::Probability;
+
+pub struct ProbabilityZeroOrder {
     cumulative: Vec<u64>,
 }
 
-impl Probability {
-    pub fn new(probabilities: Vec<u64>) -> Self {
+impl ProbabilityZeroOrder {
+    pub fn new(probabilities: &Vec<u64>) -> Self {
         let symbols = probabilities.len();
 
         // Create a list of cumulative probabilities (CDF)
@@ -21,26 +23,30 @@ impl Probability {
             cumulative: cumulative,
         }
     }
+}
 
-    pub fn cumulative_bottom(&self, symbol: usize) -> u64 {
+impl Probability for ProbabilityZeroOrder {
+    fn cumulative_bottom(&self, symbol: usize) -> u64 {
         // Return the cumulative probability excluding the symbol
         self.cumulative[symbol]
     }
 
-    pub fn cumulative_top(&self, symbol: usize) -> u64 {
+    fn cumulative_top(&self, symbol: usize) -> u64 {
         // Return the cumulative probability including the symbol
         self.cumulative[symbol + 1]
     }
 
-    pub fn total(&self) -> u64 {
+    fn total(&self) -> u64 {
         // Return the total of all probabilities
         *self.cumulative.last().unwrap()
     }
 
-    pub fn increment(&mut self, symbol: usize) {
+    fn increment(&mut self, symbol: usize) {
         // Increment the probability of a certain symbol
         for i in (symbol + 1)..self.cumulative.len() {
             self.cumulative[i] += 1;
         }
     }
+
+    fn update_last(&mut self, _symbol: usize) {}
 }
